@@ -19,6 +19,7 @@ export default function ProductDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Fetch product
   useEffect(() => {
@@ -52,6 +53,21 @@ export default function ProductDetailPage({
     }
   };
 
+  // Image carousel navigation
+  const nextImage = () => {
+    if (product?.images && product.images.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % product.images!.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (product?.images && product.images.length > 1) {
+      setCurrentImageIndex(
+        (prev) => (prev - 1 + product.images!.length) % product.images!.length
+      );
+    }
+  };
+
   // Loading state
   if (loading) {
     return <div className="text-center py-12 text-gray-500">Loading...</div>;
@@ -69,7 +85,8 @@ export default function ProductDetailPage({
     );
   }
 
-  const image = product.images?.[0];
+  const images = product.images || [];
+  const currentImage = images[currentImageIndex];
   const variant = product.variants[0];
 
   return (
@@ -83,22 +100,67 @@ export default function ProductDetailPage({
       </Link>
 
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Image */}
+        {/* Image Carousel */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div className="aspect-square relative bg-gray-100">
-            {image ? (
-              <Image
-                src={image.src}
-                alt={image.alt || product.title}
-                fill
-                className="object-cover"
-              />
+            {currentImage ? (
+              <>
+                <Image
+                  src={currentImage.src}
+                  alt={currentImage.alt || product.title}
+                  fill
+                  className="object-cover"
+                />
+
+                {/* Carousel Navigation - only show if multiple images */}
+                {images.length > 1 && (
+                  <>
+                    {/* Previous Button */}
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow"
+                    >
+                      ←
+                    </button>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 hover:bg-opacity-100 rounded-full p-2 shadow"
+                    >
+                      →
+                    </button>
+
+                    {/* Dots Indicator */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                      {images.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`w-2 h-2 rounded-full ${
+                            index === currentImageIndex
+                              ? "bg-blue-600"
+                              : "bg-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">
                 No Image
               </div>
             )}
           </div>
+
+          {/* Image Counter */}
+          {images.length > 1 && (
+            <div className="text-center py-2 text-sm text-gray-500">
+              Image {currentImageIndex + 1} of {images.length}
+            </div>
+          )}
         </div>
 
         {/* Details */}
@@ -142,6 +204,21 @@ export default function ProductDetailPage({
               className="text-gray-600 mb-6"
               dangerouslySetInnerHTML={{ __html: product.body_html }}
             />
+          )}
+
+          {/* Options */}
+          {product.options && product.options.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Options</h3>
+              {product.options.map((option, index) => (
+                <div key={index} className="mb-2">
+                  <span className="font-medium">{option.name}: </span>
+                  <span className="text-gray-600">
+                    {option.values.join(", ")}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Tags */}
@@ -226,14 +303,14 @@ export default function ProductDetailPage({
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Delete Product?
             </h3>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete &quot;{product.title}&quot;? This cannot be
-              undone.
+              Are you sure you want to delete &quot;{product.title}&quot;? This
+              cannot be undone.
             </p>
             <div className="flex gap-4">
               <button

@@ -177,7 +177,43 @@ export default function AddProductPage() {
         {/* Divider */}
         <hr className="my-6" />
 
-        <h2 className="text-lg font-semibold text-gray-900">Pricing</h2>
+        {/* Options Section */}
+        <h2 className="text-lg font-semibold text-gray-900">
+          Options <span className="text-gray-400 text-sm font-normal">(optional)</span>
+        </h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Option Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Option Name
+            </label>
+            <input
+              type="text"
+              {...register("option_name")}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="e.g., Size, Color"
+            />
+          </div>
+
+          {/* Option Values */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Option Values <span className="text-gray-400 text-xs">(comma separated)</span>
+            </label>
+            <input
+              type="text"
+              {...register("option_values")}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="e.g., S, M, L, XL"
+            />
+          </div>
+        </div>
+
+        {/* Divider */}
+        <hr className="my-6" />
+
+        <h2 className="text-lg font-semibold text-gray-900">Variant / Pricing</h2>
 
         {/* Price */}
         <div>

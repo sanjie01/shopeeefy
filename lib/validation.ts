@@ -20,6 +20,10 @@ export const productSchema = z.object({
 
   status: z.enum(["active", "draft", "archived"]),
 
+  // Options (e.g., Size, Color)
+  option_name: z.string().optional(), // e.g., "Size"
+  option_values: z.string().optional(), // e.g., "S, M, L, XL"
+
   // Variant fields
   price: z
     .string()

@@ -25,11 +25,27 @@ const sampleProducts: ShopifyProduct[] = [
         inventory_quantity: 10,
       },
     ],
+    options: [
+      {
+        name: "Color",
+        values: ["Brown", "Black", "Tan"],
+      },
+    ],
     images: [
       {
         id: "img-1",
         src: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800",
-        alt: "Leather bag",
+        alt: "Leather bag front",
+      },
+      {
+        id: "img-1b",
+        src: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800",
+        alt: "Leather bag side",
+      },
+      {
+        id: "img-1c",
+        src: "https://images.unsplash.com/photo-1547949003-9792a18a2601?w=800",
+        alt: "Leather bag detail",
       },
     ],
     created_at: new Date().toISOString(),

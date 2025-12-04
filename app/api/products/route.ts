@@ -38,12 +38,21 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: result.error.errors },
+        { error: "Validation failed", details: result.error.issues },
         { status: 400 }
       );
     }
 
     const data = result.data;
+
+    // Build options array if provided
+    const options = [];
+    if (data.option_name && data.option_values) {
+      options.push({
+        name: data.option_name,
+        values: data.option_values.split(",").map((v) => v.trim()),
+      });
+    }
 
     // Convert form data to product format
     const product = createProduct({
@@ -54,6 +63,7 @@ export async function POST(request: NextRequest) {
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : [],
       status: data.status,
       images: data.image_url ? [{ src: data.image_url }] : [],
+      options: options.length > 0 ? options : undefined,
       variants: [
         {
           title: "Default",

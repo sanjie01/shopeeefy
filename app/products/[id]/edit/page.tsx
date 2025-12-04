@@ -53,6 +53,8 @@ export default function EditProductPage({
         tags: product.tags?.join(", ") || "",
         image_url: product.images?.[0]?.src || "",
         status: product.status || "draft",
+        option_name: product.options?.[0]?.name || "",
+        option_values: product.options?.[0]?.values.join(", ") || "",
         price: product.variants[0]?.price.toString() || "",
         sku: product.variants[0]?.sku || "",
         inventory: product.variants[0]?.inventory_quantity?.toString() || "0",
@@ -70,6 +72,15 @@ export default function EditProductPage({
     setError("");
 
     try {
+      // Build options array if provided
+      const options = [];
+      if (data.option_name && data.option_values) {
+        options.push({
+          name: data.option_name,
+          values: data.option_values.split(",").map((v) => v.trim()),
+        });
+      }
+
       // Build update data
       const updateData = {
         title: data.title,
@@ -79,6 +90,7 @@ export default function EditProductPage({
         tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : [],
         status: data.status,
         images: data.image_url ? [{ src: data.image_url }] : [],
+        options: options.length > 0 ? options : undefined,
         variants: [
           {
             title: "Default",
@@ -139,7 +151,7 @@ export default function EditProductPage({
         </div>
       )}
 
-      {/* Form (same as add page) */}
+      {/* Form */}
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white p-6 rounded-lg border border-gray-200 space-y-6"
@@ -244,7 +256,42 @@ export default function EditProductPage({
 
         <hr className="my-6" />
 
-        <h2 className="text-lg font-semibold text-gray-900">Pricing</h2>
+        {/* Options Section */}
+        <h2 className="text-lg font-semibold text-gray-900">
+          Options <span className="text-gray-400 text-sm font-normal">(optional)</span>
+        </h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Option Name */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Option Name
+            </label>
+            <input
+              type="text"
+              {...register("option_name")}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="e.g., Size, Color"
+            />
+          </div>
+
+          {/* Option Values */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Option Values
+            </label>
+            <input
+              type="text"
+              {...register("option_values")}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              placeholder="e.g., S, M, L, XL"
+            />
+          </div>
+        </div>
+
+        <hr className="my-6" />
+
+        <h2 className="text-lg font-semibold text-gray-900">Variant / Pricing</h2>
 
         {/* Price */}
         <div>
