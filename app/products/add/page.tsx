@@ -6,11 +6,33 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormData } from "@/lib/validation";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export default function AddProductPage() {
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Redirect if not logged in
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-md mx-auto mt-16 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          Admin Access Required
+        </h1>
+        <p className="text-gray-600 mb-6">
+          You need to login as admin to add products.
+        </p>
+        <Link
+          href="/login"
+          className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Login as Admin
+        </Link>
+      </div>
+    );
+  }
 
   // Setup form with react-hook-form and zod
   const {
@@ -38,17 +60,24 @@ export default function AddProductPage() {
 
       const result = await response.json();
 
+      console.log("API Response:", response.status, result);
+
       if (!response.ok) {
         setError(result.error || "Failed to create product");
+        setIsSubmitting(false);
         return;
       }
 
-      // Redirect to the new product page
-      router.push(`/products/${result.product.id}`);
+      if (result.product && result.product.id) {
+        // Redirect to the new product page
+        router.push(`/products/${result.product.id}`);
+      } else {
+        // Fallback - go to products list
+        router.push("/products");
+      }
     } catch (err) {
-      console.error(err);
-      setError("Something went wrong");
-    } finally {
+      console.error("Error:", err);
+      setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
     }
   };

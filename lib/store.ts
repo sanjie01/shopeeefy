@@ -1,8 +1,9 @@
 import { ShopifyProduct } from "./shopify";
 import { generateId } from "./shopify";
 
-// Key for localStorage
-const STORAGE_KEY = "products";
+// In-memory storage for server-side
+let products: ShopifyProduct[] = [];
+let initialized = false;
 
 // Sample products to start with
 const sampleProducts: ShopifyProduct[] = [
@@ -109,25 +110,23 @@ const sampleProducts: ShopifyProduct[] = [
   },
 ];
 
-// Get all products from localStorage
+// Initialize products (runs once)
+function initProducts() {
+  if (!initialized) {
+    products = [...sampleProducts];
+    initialized = true;
+  }
+}
+
+// Get all products
 export function getProducts(): ShopifyProduct[] {
-  if (typeof window === "undefined") {
-    return sampleProducts;
-  }
-
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  }
-
-  // First time - save sample products
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleProducts));
-  return sampleProducts;
+  initProducts();
+  return products;
 }
 
 // Get one product by ID
 export function getProductById(id: string): ShopifyProduct | null {
-  const products = getProducts();
+  initProducts();
   const product = products.find((p) => p.id === id);
   return product || null;
 }
@@ -136,7 +135,7 @@ export function getProductById(id: string): ShopifyProduct | null {
 export function createProduct(
   data: Omit<ShopifyProduct, "id" | "created_at">
 ): ShopifyProduct {
-  const products = getProducts();
+  initProducts();
 
   const newProduct: ShopifyProduct = {
     ...data,
@@ -146,8 +145,6 @@ export function createProduct(
   };
 
   products.unshift(newProduct); // Add to beginning
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-
   return newProduct;
 }
 
@@ -156,7 +153,7 @@ export function updateProduct(
   id: string,
   data: Partial<ShopifyProduct>
 ): ShopifyProduct | null {
-  const products = getProducts();
+  initProducts();
   const index = products.findIndex((p) => p.id === id);
 
   if (index === -1) {
@@ -165,37 +162,28 @@ export function updateProduct(
 
   const updated = { ...products[index], ...data };
   products[index] = updated;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-
   return updated;
 }
 
 // Delete a product
 export function deleteProduct(id: string): boolean {
-  const products = getProducts();
-  const filtered = products.filter((p) => p.id !== id);
-
-  if (filtered.length === products.length) {
-    return false; // Nothing was deleted
-  }
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return true;
+  initProducts();
+  const initialLength = products.length;
+  products = products.filter((p) => p.id !== id);
+  return products.length < initialLength;
 }
 
 // Search products by title
 export function searchProducts(query: string): ShopifyProduct[] {
-  const products = getProducts();
+  initProducts();
   const lowerQuery = query.toLowerCase();
-
   return products.filter((p) => p.title.toLowerCase().includes(lowerQuery));
 }
 
 // Filter products by tag
 export function filterByTag(tag: string): ShopifyProduct[] {
-  const products = getProducts();
+  initProducts();
   const lowerTag = tag.toLowerCase();
-
   return products.filter((p) =>
     p.tags?.some((t) => t.toLowerCase() === lowerTag)
   );
@@ -203,12 +191,10 @@ export function filterByTag(tag: string): ShopifyProduct[] {
 
 // Get all unique tags
 export function getAllTags(): string[] {
-  const products = getProducts();
+  initProducts();
   const tags = new Set<string>();
-
   products.forEach((p) => {
     p.tags?.forEach((tag) => tags.add(tag));
   });
-
   return Array.from(tags).sort();
 }

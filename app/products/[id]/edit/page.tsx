@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductFormData } from "@/lib/validation";
 import { ShopifyProduct } from "@/lib/shopify";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export default function EditProductPage({
   params,
@@ -15,10 +16,31 @@ export default function EditProductPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Redirect if not logged in
+  if (!isLoggedIn) {
+    return (
+      <div className="max-w-md mx-auto mt-16 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          Admin Access Required
+        </h1>
+        <p className="text-gray-600 mb-6">
+          You need to login as admin to edit products.
+        </p>
+        <Link
+          href="/login"
+          className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Login as Admin
+        </Link>
+      </div>
+    );
+  }
 
   // Setup form
   const {
@@ -89,10 +111,11 @@ export default function EditProductPage({
         product_type: data.product_type || "",
         tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : [],
         status: data.status,
-        images: data.image_url ? [{ src: data.image_url }] : [],
+        images: data.image_url ? [{ id: `img-${Date.now()}`, src: data.image_url }] : [],
         options: options.length > 0 ? options : undefined,
         variants: [
           {
+            id: `var-${Date.now()}`,
             title: "Default",
             price: parseFloat(data.price),
             sku: data.sku || "",

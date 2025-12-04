@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShopifyProduct } from "@/lib/shopify";
 import { formatPrice, formatDate } from "@/lib/shopify";
+import { useAuth } from "@/lib/auth-context";
 
 export default function ProductDetailPage({
   params,
@@ -14,6 +15,7 @@ export default function ProductDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
 
   const [product, setProduct] = useState<ShopifyProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -246,21 +248,30 @@ export default function ProductDetailPage({
             )}
           </div>
 
-          {/* Admin Actions */}
-          <div className="flex gap-4">
-            <Link
-              href={`/products/${id}/edit`}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Edit
-            </Link>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
-            >
-              Delete
-            </button>
-          </div>
+          {/* Admin Actions - Only show if logged in */}
+          {isLoggedIn ? (
+            <div className="flex gap-4">
+              <Link
+                href={`/products/${id}/edit`}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+              >
+                Delete
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              <Link href="/login" className="text-blue-600 hover:underline">
+                Login as admin
+              </Link>{" "}
+              to edit or delete this product.
+            </p>
+          )}
         </div>
       </div>
 
@@ -279,8 +290,8 @@ export default function ProductDetailPage({
             </tr>
           </thead>
           <tbody>
-            {product.variants.map((v) => (
-              <tr key={v.id} className="border-t border-gray-100">
+            {product.variants.map((v, index) => (
+              <tr key={v.id || `variant-${index}`} className="border-t border-gray-100">
                 <td className="p-4">{v.title || "Default"}</td>
                 <td className="p-4 text-gray-500">{v.sku || "-"}</td>
                 <td className="p-4">{formatPrice(v.price)}</td>

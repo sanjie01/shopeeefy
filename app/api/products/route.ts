@@ -32,9 +32,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log("Received data:", body);
 
     // Validate with zod
     const result = productSchema.safeParse(body);
+    console.log("Validation result:", result.success);
 
     if (!result.success) {
       return NextResponse.json(
@@ -62,10 +64,11 @@ export async function POST(request: NextRequest) {
       product_type: data.product_type || "",
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : [],
       status: data.status,
-      images: data.image_url ? [{ src: data.image_url }] : [],
+      images: data.image_url ? [{ id: `img-${Date.now()}`, src: data.image_url }] : [],
       options: options.length > 0 ? options : undefined,
       variants: [
         {
+          id: `var-${Date.now()}`,
           title: "Default",
           price: parseFloat(data.price),
           sku: data.sku || "",
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
       ],
     });
 
+    console.log("Product created:", product.id);
     return NextResponse.json({ product }, { status: 201 });
   } catch (error) {
     console.error("Error creating product:", error);
