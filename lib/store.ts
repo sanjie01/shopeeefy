@@ -1,200 +1,245 @@
+import { prisma } from "./prisma";
 import { ShopifyProduct } from "./shopify";
 import { generateId } from "./shopify";
 
-// In-memory storage for server-side
-let products: ShopifyProduct[] = [];
-let initialized = false;
-
-// Sample products to start with
-const sampleProducts: ShopifyProduct[] = [
-  {
-    id: "product-1",
-    title: "Leather Messenger Bag",
-    body_html:
-      "A beautiful handcrafted leather messenger bag. Perfect for work or school. Features multiple pockets and adjustable strap.",
-    vendor: "Artisan Bags",
-    product_type: "Bags",
-    tags: ["leather", "bag", "handmade"],
-    status: "active",
-    variants: [
-      {
-        id: "variant-1",
-        title: "Brown",
-        price: 149.99,
-        compare_at_price: 199.99,
-        sku: "BAG-001",
-        inventory_quantity: 10,
-      },
-    ],
-    options: [
-      {
-        name: "Color",
-        values: ["Brown", "Black", "Tan"],
-      },
-    ],
-    images: [
-      {
-        id: "img-1",
-        src: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800",
-        alt: "Leather bag front",
-      },
-      {
-        id: "img-1b",
-        src: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800",
-        alt: "Leather bag side",
-      },
-      {
-        id: "img-1c",
-        src: "https://images.unsplash.com/photo-1547949003-9792a18a2601?w=800",
-        alt: "Leather bag detail",
-      },
-    ],
-    created_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-  },
-  {
-    id: "product-2",
-    title: "Ceramic Coffee Mug",
-    body_html:
-      "Handmade ceramic mug with a beautiful glazed finish. Holds 12oz of your favorite beverage. Dishwasher and microwave safe.",
-    vendor: "Home Ceramics",
-    product_type: "Kitchen",
-    tags: ["ceramic", "mug", "kitchen"],
-    status: "active",
-    variants: [
-      {
-        id: "variant-2",
-        title: "White",
-        price: 24.99,
-        sku: "MUG-001",
-        inventory_quantity: 25,
-      },
-    ],
-    images: [
-      {
-        id: "img-2",
-        src: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=800",
-        alt: "Ceramic mug",
-      },
-    ],
-    created_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-  },
-  {
-    id: "product-3",
-    title: "Wireless Headphones",
-    body_html:
-      "Premium wireless headphones with noise cancellation. 20 hour battery life. Comfortable over-ear design for all day use.",
-    vendor: "Tech Audio",
-    product_type: "Electronics",
-    tags: ["audio", "wireless", "headphones"],
-    status: "draft",
-    variants: [
-      {
-        id: "variant-3",
-        title: "Black",
-        price: 199.99,
-        sku: "HP-001",
-        inventory_quantity: 0,
-      },
-    ],
-    images: [
-      {
-        id: "img-3",
-        src: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800",
-        alt: "Headphones",
-      },
-    ],
-    created_at: new Date().toISOString(),
-    published_at: null,
-  },
-];
-
-// Initialize products (runs once)
-function initProducts() {
-  if (!initialized) {
-    products = [...sampleProducts];
-    initialized = true;
-  }
+// Helper: Convert DB record to ShopifyProduct format
+function toShopifyProduct(dbProduct: any): ShopifyProduct {
+  return {
+    id: dbProduct.id,
+    title: dbProduct.title,
+    body_html: dbProduct.body_html || undefined,
+    vendor: dbProduct.vendor || undefined,
+    product_type: dbProduct.product_type || undefined,
+    handle: dbProduct.handle || undefined,
+    status: dbProduct.status as "active" | "draft" | "archived",
+    created_at: dbProduct.created_at.toISOString(),
+    published_at: dbProduct.published_at?.toISOString() || null,
+    tags: dbProduct.tags?.map((t: any) => t.name) || [],
+    images: dbProduct.images?.map((img: any) => ({
+      id: img.id,
+      src: img.src,
+      alt: img.alt || undefined,
+      width: img.width || undefined,
+      height: img.height || undefined,
+    })) || [],
+    options: dbProduct.options?.map((opt: any) => ({
+      id: opt.id,
+      name: opt.name,
+      values: opt.values.split(",").map((v: string) => v.trim()),
+    })) || [],
+    variants: dbProduct.variants?.map((v: any) => ({
+      id: v.id,
+      title: v.title || undefined,
+      price: parseFloat(v.price),
+      compare_at_price: v.compare_at_price ? parseFloat(v.compare_at_price) : undefined,
+      sku: v.sku || undefined,
+      inventory_quantity: v.inventory_quantity,
+    })) || [],
+  };
 }
 
+// Include all relations in queries
+const includeAll = {
+  variants: true,
+  images: true,
+  options: true,
+  tags: true,
+};
+
 // Get all products
-export function getProducts(): ShopifyProduct[] {
-  initProducts();
-  return products;
+export async function getProducts(): Promise<ShopifyProduct[]> {
+  const products = await prisma.product.findMany({
+    include: includeAll,
+    orderBy: { created_at: "desc" },
+  });
+  return products.map(toShopifyProduct);
 }
 
 // Get one product by ID
-export function getProductById(id: string): ShopifyProduct | null {
-  initProducts();
-  const product = products.find((p) => p.id === id);
-  return product || null;
+export async function getProductById(id: string): Promise<ShopifyProduct | null> {
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: includeAll,
+  });
+  return product ? toShopifyProduct(product) : null;
 }
 
 // Create a new product
-export function createProduct(
+export async function createProduct(
   data: Omit<ShopifyProduct, "id" | "created_at">
-): ShopifyProduct {
-  initProducts();
-
-  const newProduct: ShopifyProduct = {
-    ...data,
-    id: generateId(),
-    created_at: new Date().toISOString(),
-    published_at: data.status === "active" ? new Date().toISOString() : null,
-  };
-
-  products.unshift(newProduct); // Add to beginning
-  return newProduct;
+): Promise<ShopifyProduct> {
+  const product = await prisma.product.create({
+    data: {
+      title: data.title,
+      body_html: data.body_html,
+      vendor: data.vendor,
+      product_type: data.product_type,
+      handle: data.handle,
+      status: data.status || "active",
+      published_at: data.status === "active" ? new Date() : null,
+      // Create related records
+      variants: {
+        create: data.variants?.map((v) => ({
+          title: v.title,
+          price: v.price,
+          compare_at_price: v.compare_at_price,
+          sku: v.sku,
+          inventory_quantity: v.inventory_quantity || 0,
+        })) || [],
+      },
+      images: {
+        create: data.images?.map((img) => ({
+          src: img.src,
+          alt: img.alt,
+          width: img.width,
+          height: img.height,
+        })) || [],
+      },
+      options: {
+        create: data.options?.map((opt) => ({
+          name: opt.name,
+          values: opt.values.join(", "),
+        })) || [],
+      },
+      tags: {
+        create: data.tags?.map((tag) => ({
+          name: tag,
+        })) || [],
+      },
+    },
+    include: includeAll,
+  });
+  return toShopifyProduct(product);
 }
 
 // Update a product
-export function updateProduct(
+export async function updateProduct(
   id: string,
   data: Partial<ShopifyProduct>
-): ShopifyProduct | null {
-  initProducts();
-  const index = products.findIndex((p) => p.id === id);
+): Promise<ShopifyProduct | null> {
+  // Check if product exists
+  const existing = await prisma.product.findUnique({ where: { id } });
+  if (!existing) return null;
 
-  if (index === -1) {
-    return null;
+  // Update main product fields
+  const updateData: any = {};
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.body_html !== undefined) updateData.body_html = data.body_html;
+  if (data.vendor !== undefined) updateData.vendor = data.vendor;
+  if (data.product_type !== undefined) updateData.product_type = data.product_type;
+  if (data.handle !== undefined) updateData.handle = data.handle;
+  if (data.status !== undefined) {
+    updateData.status = data.status;
+    if (data.status === "active" && !existing.published_at) {
+      updateData.published_at = new Date();
+    }
   }
 
-  const updated = { ...products[index], ...data };
-  products[index] = updated;
-  return updated;
+  // Handle variants update (delete and recreate)
+  if (data.variants) {
+    await prisma.productVariant.deleteMany({ where: { product_id: id } });
+    updateData.variants = {
+      create: data.variants.map((v) => ({
+        title: v.title,
+        price: v.price,
+        compare_at_price: v.compare_at_price,
+        sku: v.sku,
+        inventory_quantity: v.inventory_quantity || 0,
+      })),
+    };
+  }
+
+  // Handle images update
+  if (data.images) {
+    await prisma.productImage.deleteMany({ where: { product_id: id } });
+    updateData.images = {
+      create: data.images.map((img) => ({
+        src: img.src,
+        alt: img.alt,
+        width: img.width,
+        height: img.height,
+      })),
+    };
+  }
+
+  // Handle options update
+  if (data.options) {
+    await prisma.productOption.deleteMany({ where: { product_id: id } });
+    updateData.options = {
+      create: data.options.map((opt) => ({
+        name: opt.name,
+        values: opt.values.join(", "),
+      })),
+    };
+  }
+
+  // Handle tags update
+  if (data.tags) {
+    await prisma.productTag.deleteMany({ where: { product_id: id } });
+    updateData.tags = {
+      create: data.tags.map((tag) => ({
+        name: tag,
+      })),
+    };
+  }
+
+  const product = await prisma.product.update({
+    where: { id },
+    data: updateData,
+    include: includeAll,
+  });
+
+  return toShopifyProduct(product);
 }
 
 // Delete a product
-export function deleteProduct(id: string): boolean {
-  initProducts();
-  const initialLength = products.length;
-  products = products.filter((p) => p.id !== id);
-  return products.length < initialLength;
+export async function deleteProduct(id: string): Promise<boolean> {
+  try {
+    await prisma.product.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Search products by title
-export function searchProducts(query: string): ShopifyProduct[] {
-  initProducts();
-  const lowerQuery = query.toLowerCase();
-  return products.filter((p) => p.title.toLowerCase().includes(lowerQuery));
+export async function searchProducts(query: string): Promise<ShopifyProduct[]> {
+  const products = await prisma.product.findMany({
+    where: {
+      title: {
+        contains: query,
+      },
+    },
+    include: includeAll,
+    orderBy: { created_at: "desc" },
+  });
+  return products.map(toShopifyProduct);
 }
 
 // Filter products by tag
-export function filterByTag(tag: string): ShopifyProduct[] {
-  initProducts();
-  const lowerTag = tag.toLowerCase();
-  return products.filter((p) =>
-    p.tags?.some((t) => t.toLowerCase() === lowerTag)
-  );
+export async function filterByTag(tag: string): Promise<ShopifyProduct[]> {
+  const products = await prisma.product.findMany({
+    where: {
+      tags: {
+        some: {
+          name: {
+            equals: tag,
+          },
+        },
+      },
+    },
+    include: includeAll,
+    orderBy: { created_at: "desc" },
+  });
+  return products.map(toShopifyProduct);
 }
 
 // Get all unique tags
-export function getAllTags(): string[] {
-  initProducts();
-  const tags = new Set<string>();
-  products.forEach((p) => {
-    p.tags?.forEach((tag) => tags.add(tag));
+export async function getAllTags(): Promise<string[]> {
+  const tags = await prisma.productTag.findMany({
+    distinct: ["name"],
+    select: { name: true },
+    orderBy: { name: "asc" },
   });
-  return Array.from(tags).sort();
+  return tags.map((t: { name: string }) => t.name);
 }

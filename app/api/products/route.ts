@@ -10,21 +10,29 @@ import { productSchema } from "@/lib/validation";
 // GET /api/products
 // Get all products, with optional search and tag filter
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const search = searchParams.get("search");
-  const tag = searchParams.get("tag");
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const search = searchParams.get("search");
+    const tag = searchParams.get("tag");
 
-  let products;
+    let products;
 
-  if (search) {
-    products = searchProducts(search);
-  } else if (tag) {
-    products = filterByTag(tag);
-  } else {
-    products = getProducts();
+    if (search) {
+      products = await searchProducts(search);
+    } else if (tag) {
+      products = await filterByTag(tag);
+    } else {
+      products = await getProducts();
+    }
+
+    return NextResponse.json({ products });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch products" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ products });
 }
 
 // POST /api/products
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert form data to product format
-    const product = createProduct({
+    const product = await createProduct({
       title: data.title,
       body_html: data.body_html,
       vendor: data.vendor,

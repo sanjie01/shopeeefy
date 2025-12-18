@@ -1,0 +1,88 @@
+// Prisma schema for MySQL (XAMPP)
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Main product table
+model Product {
+  id           String    @id @default(cuid())
+  title        String
+  body_html    String?   @db.Text
+  vendor       String?
+  product_type String?
+  handle       String?
+  status       String    @default("active")
+  created_at   DateTime  @default(now())
+  published_at DateTime?
+
+  // Relations
+  variants ProductVariant[]
+  images   ProductImage[]
+  options  ProductOption[]
+  tags     ProductTag[]
+
+  @@map("products")
+}
+
+// Product variants (price, sku, inventory)
+model ProductVariant {
+  id                 String   @id @default(cuid())
+  title              String?
+  price              Decimal  @db.Decimal(10, 2)
+  compare_at_price   Decimal? @db.Decimal(10, 2)
+  sku                String?
+  inventory_quantity Int      @default(0)
+
+  // Relation
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+// Product images
+model ProductImage {
+  id     String  @id @default(cuid())
+  src    String  @db.Text
+  alt    String?
+  width  Int?
+  height Int?
+
+  // Relation
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+// Product options (e.g., Size, Color)
+model ProductOption {
+  id     String @id @default(cuid())
+  name   String
+  values String @db.Text // Comma-separated values
+
+  // Relation
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_options")
+}
+
+// Product tags (many-to-many via junction)
+model ProductTag {
+  id   String @id @default(cuid())
+  name String
+
+  // Relation
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@map("product_tags")
+}

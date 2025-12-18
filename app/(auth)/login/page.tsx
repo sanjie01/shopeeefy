@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -13,11 +13,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  // Redirect if already logged in
-  if (isLoggedIn) {
-    router.push("/products");
-    return null;
-  }
+  // Redirect if already logged in - using useEffect
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.push("/products");
+    }
+  }, [isLoggedIn, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +32,15 @@ export default function LoginPage() {
       setError("Invalid email or password");
     }
   };
+
+  // Optional: Show loading state while redirecting
+  if (isLoggedIn) {
+    return (
+      <div className="max-w-md mx-auto mt-16 text-center">
+        <p className="text-gray-600">Redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto mt-16">
